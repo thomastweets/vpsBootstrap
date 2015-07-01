@@ -1,15 +1,18 @@
 # vpsBootstrap.yml
-
+# https://serverfault.com/questions/567887/how-to-install-python-packages-to-homebrew-ansibles-site-packages-folder
 ---
-- hosts: vps
+- hosts: all
+  user: vagrant
+  sudo: yes
   vars:
-  - ubuntu_release: raring
-  - logwatch_email: <your email addy>
-    # crypted passwords, generated on a Linux box using:
-    # echo 'import crypt,getpass; print crypt.crypt(getpass.getpass(), "$6$YOURSALT")' | python -
-  - root_password: ''
-  - deploy_password: ''
-
+  - ubuntu_release: trusty
+  - logwatch_email: mail@yourdomain.tld
+    # crypted passwords, generated using passlib (pip install passlib):
+    # python -c "from passlib.hash import sha512_crypt; import getpass; print sha512_crypt.encrypt(getpass.getpass())"
+  - deploy_password: $6$rounds=100000$oasyo6Etwm5Z1y/P$4md7tsFpgSKvjsK6W1CnzYnGIWSCcMFxBTmUd74amfbciAqc/5Z9asFQzaFZQuHZ/SgY1Uwo76hX.fUNYWfj00
+  - root_password: $6$rounds=100000$.giIFokLccflM7L.$5feT4Lc0J9j3orVX3gNz6RU07yUYITUzsfKQi4t//EBReMXTFk4lvUztY9mqXsq45hiJn6sgVEJtkkGsUiXGL1
+  - fqdn_hostname: server.yourdomain.tld
+  - fqdn_smtp_relay: mail.yourrelay.tld
 
   tasks:
   - name: Update APT package cache
@@ -27,11 +30,14 @@
   - name: Install fail2ban
     action: apt pkg=fail2ban state=installed
 
+  - name: Set root password
+    action: user name=root password={{root_password}}
+
   - name: Add deployment user
-    action: user name=deploy password=$deploy_password
+    action: user name=deploy shell=/bin/bash password={{deploy_password}} state=present
 
   - name: Add authorized deploy key
-    action: authorized_key user=deploy key='$FILE(id_rsa.pub)'
+    action: authorized_key user=deploy key="{{ lookup('file', './id_rsa.pub') }}" state=present
 
   - name: Remove sudo group rights
     action: lineinfile dest=/etc/sudoers regexp="^%sudo" state=absent
@@ -49,17 +55,17 @@
   - name: Make sure unattended-upgrades only installs from $ubuntu_release-security
     action: lineinfile dest=/etc/apt/apt.conf.d/50unattended-upgrades regexp="$ubuntu_release-updates" state=absent
 
-  - name: Set up Postfix to relay mail
-    template: src=postfix-smarthost.preseed.j2 dest=/tmp/postfix-smarthost.preseed validate='debconf-set-selections %s'
-
-  - name: Install Postfix package
-    apt: pkg=postfix state=installed update-cache=yes
-
-  - name: Install logwatch
-    action: apt pkg=logwatch state=installed
-
-  - name: Make logwatch mail $logwatch_email daily
-    action: lineinfile dest=/etc/cron.daily/00logwatch regexp="^/usr/sbin/logwatch" line="/usr/sbin/logwatch --output mail --mailto $logwatch_email --detail high" state=present create=yes
+  # - name: Set up Postfix to relay mail
+  #   template: src=postfix-smarthost.preseed.j2 dest=/tmp/postfix-smarthost.preseed validate='debconf-set-selections %s'
+  #
+  # - name: Install Postfix package
+  #   action: apt pkg=postfix state=installed update-cache=yes
+  #
+  # - name: Install logwatch
+  #   action: apt pkg=logwatch state=installed
+  #
+  # - name: Make logwatch mail $logwatch_email daily
+  #   action: lineinfile dest=/etc/cron.daily/00logwatch regexp="^/usr/sbin/logwatch" line="/usr/sbin/logwatch --output mail --mailto $logwatch_email --detail high" state=present create=yes
 
   - name: Setup ufw (allow ssh)
     action: shell ufw allow 22/tcp
@@ -73,9 +79,9 @@
   - name: Enable ufw
     action: shell echo 'y' | ufw enable
 
-  - name: Disallow root SSH access
-    action: lineinfile dest=/etc/ssh/sshd_config regexp="^PermitRootLogin" line="PermitRootLogin no" state=present
-    notify: Restart ssh
+  # - name: Disallow root SSH access
+  #   action: lineinfile dest=/etc/ssh/sshd_config regexp="^PermitRootLogin" line="PermitRootLogin no" state=present
+  #   notify: Restart ssh
 
   handlers:
   - name: Restart ssh
