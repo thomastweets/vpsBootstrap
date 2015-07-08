@@ -1,0 +1,70 @@
+---
+# file: main.yml
+
+- name: copy ssh welcome message
+  sudo: yes
+  copy:
+    src: issue
+    dest: /etc/issue
+  notify: restart ssh
+
+- name: copy ssh welcome message (net)
+  sudo: yes
+  copy:
+    src: issue
+    dest: /etc/issue.net
+  notify: restart ssh
+
+- name: set root password
+  sudo: yes
+  user:
+    name: root
+    password: "{{vps_root_password}}"
+
+- name: add deployment user
+  sudo: yes
+  user:
+    name: deploy
+    shell: /bin/bash
+    password: "{{vps_deploy_password}}"
+    state: present
+
+- name: add authorized deploy key
+  sudo: yes
+  authorized_key:
+    user: deploy
+    key: "{{ lookup('file', './id_rsa.pub') }}"
+    state: present
+
+- name: remove sudo group rights
+  sudo: yes
+  lineinfile:
+    dest: /etc/sudoers
+    regexp: "^%sudo"
+    state: absent
+
+- name: add deploy user to sudoers
+  sudo: yes
+  lineinfile:
+    dest: /etc/sudoers
+    regexp: "deploy ALL"
+    line: "deploy ALL=(ALL) ALL"
+    state: present
+
+- name: disallow root SSH access
+  sudo: yes
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^PermitRootLogin"
+    line: "PermitRootLogin no"
+    state: present
+  notify: restart ssh
+
+- name: disallow password authentication
+  sudo: yes
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^PasswordAuthentication"
+    line: "PasswordAuthentication no"
+    state: present
+  notify: restart ssh
