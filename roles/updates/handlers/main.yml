@@ -1,0 +1,8 @@
+---
+
+- name: restart unattended upgrades
+  sudo: yes
+  service:
+    name: unattended-upgrades
+    state: restarted
+    enabled: yes

@@ -1,0 +1,43 @@
+---
+
+- name: install common packages
+  sudo: yes
+  apt:
+     pkg: "{{ item }}"
+     state: present
+     update-cache: yes
+  with_items:
+     - python-keyczar
+     - unattended-upgrades
+     - zsh
+     - tmux
+     - git
+     - vim
+     - mosh
+     - fail2ban
+
+- name: set update cache and safe updates
+  sudo: yes
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+    upgrade: safe
+
+- name: create APT auto-upgrades configuration
+  sudo: yes
+  copy:
+    src: auto-upgrades
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart unattended upgrades
+
+- name: create unattended-upgrades configuration
+  sudo: yes
+  template:
+    src: unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    owner: root
+    group: root
+    mode: 0644
