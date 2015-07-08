@@ -15,6 +15,11 @@
      - vim
      - mosh
      - fail2ban
+     - curl
+     - wget
+     - htop
+     - iftop
+     - iotop
 
 - name: set update cache and safe updates
   sudo: yes
