@@ -1,0 +1,60 @@
+---
+# file: main.yml
+
+- name : create openvpn group
+  sudo: yes
+  group:
+    name: openvpn
+    system: yes
+    state: present
+
+- name : create openvpn user
+  sudo: yes
+  user:
+    name: openvpn
+    group: openvpn
+    shell: '/bin/false'
+    system: yes
+    createhome: no
+    state: present
+
+- name: install required packages
+  sudo: yes
+  apt: name={{item}}
+  with_items: [openvpn, easy-rsa]
+
+- name: copy easy-rsa example files
+  sudo: yes
+  command: cp -r /usr/share/easy-rsa '{{openvpn_easyrsa2dir}}'
+
+- name: copy newest openssl.cnf
+  sudo: yes
+  command: cp '{{openvpn_easyrsa2dir}}/{{openvpn_opensslcnf}}' '{{openvpn_easyrsa2dir}}/openssl.cnf'
+
+- name: generate scripts
+  sudo: yes
+  template: src={{item}}.j2 dest={{openvpn_etcdir}}/{{item}} mode=0700
+  with_items: [vars, build-server.sh, build-client.sh, revoke-client.sh]
+
+- name: generate Server keys
+  sudo: yes
+  command: "{{openvpn_etcdir}}/build-server.sh"
+  args: { creates: "{{ openvpn_keydir }}" }
+
+- name: generate Clients keys
+  sudo: yes
+  command: "{{openvpn_etcdir}}/build-client.sh {{item}}"
+  args: { creates: "{{ openvpn_keydir }}/{{item}}.crt" }
+  with_items: openvpn_clients
+
+- name: generate Clients configurations
+  sudo: yes
+  template: src=client.conf.j2 dest={{openvpn_keydir}}/{{item}}.ovpn
+  with_items: openvpn_clients
+  notify: openvpn pack clients
+  register: openvpn_clients_changed
+
+- name: Configure server
+  sudo: yes
+  template: src=server.conf.j2 dest={{openvpn_etcdir}}/server.conf
+  notify: [openvpn restart]
