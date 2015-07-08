@@ -1,0 +1,32 @@
+---
+# Handlers for Postfix notifications.
+
+- name: stop postfix
+  sudo: yes
+  service:
+    name: '{{ postfix_service }}'
+    state: stopped
+
+- name: start postfix
+  sudo: yes
+  service:
+    name: '{{ postfix_service }}'
+    state: started
+    enabled: yes
+
+- name: restart postfix
+  sudo: yes
+  service:
+    name: '{{ postfix_service }}'
+    state: restarted
+    enabled: yes
+
+- name: postmap sasl
+  sudo: yes
+  command: >
+    /usr/sbin/postmap {{ postfix_config_dir }}/sasl_passwd
+
+- name: send test email
+  shell: >
+    echo "This is a test message from Ansible configuration of {{ ansible_hostname }} at $(date -R)" | sendmail {{ postfix_notify_email }}
+  when: postfix_notify_email is defined

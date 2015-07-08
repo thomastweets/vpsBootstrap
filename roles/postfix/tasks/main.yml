@@ -1,0 +1,71 @@
+---
+# Defines tasks to install and configure Postfix
+
+- name: create pre-seed values for Postfix configuration
+  sudo: yes
+  template:
+    src: tmp-postfix_selections.j2
+    dest: /tmp/postfix_selections
+    mode: 0644
+    owner: root
+    group: root
+  register: preseed_template
+
+# - name: Pre-seed Postfix configuration
+#   command: >
+#     /usr/bin/debconf-set-selections /tmp/postfix_selections
+#     executable=/bin/bash
+#   when: preseed_template|changed
+#   tags:
+#     - common
+#     - postfix
+
+- name: install packages for Debian derivatives
+  sudo: yes
+  apt:
+    pkg: '{{ item }}'
+    update_cache: yes
+    state: latest
+  with_items: postfix_packages
+
+- name: write SMTP authentication template
+  sudo: yes
+  template:
+    src: sasl_passwd.j2
+    dest: '{{ postfix_config_dir }}/sasl_passwd'
+    mode: 0600
+    owner: root
+    group: root
+  notify:
+    - postmap sasl
+  when: postfix_use_smtp and postfix_relayhost_user and postfix_relayhost_pass
+
+- name: write Postfix configuration template
+  sudo: yes
+  template:
+    src: main-cf.j2
+    dest: '{{ postfix_config_dir }}/main.cf'
+    mode: 0644
+    owner: root
+    group: root
+    backup: yes
+  notify:
+    - restart postfix
+    - send test email
+
+- name: configure root user email forwarding
+  sudo: yes
+  template:
+    src: root-forward.j2
+    dest: /root/.forward
+    mode: 0644
+    owner: root
+    group: root
+  when: postfix_notify_email is defined
+
+- name: start Postfix on server boot
+  sudo: yes
+  service:
+    name: '{{ postfix_service }}'
+    state: started
+    enabled: yes

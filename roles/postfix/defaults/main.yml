@@ -1,0 +1,33 @@
+---
+# The variables file used for Postfix playbooks.
+# If not overriden in inventory or as a parameter, this is the value that will be used
+
+# The FQDN for the Postfix email server
+postfix_domain: ''
+
+# The receiving email address where root email is forwarded
+postfix_notify_email: false
+
+# The next-hop destination of non-local mail, for SMTP define a FQDN or hostname
+postfix_relayhost: ''
+postfix_relayhost_port: '25'
+
+# The default flag for whether to enable SMTP sending
+postfix_use_smtp: false
+
+# The username for SMTP authentication
+postfix_relayhost_user: false
+
+# The password for SMTP authentication
+postfix_relayhost_pass: false
+
+# Defines variables for Debian/Ubuntu
+postfix_config_dir: '/etc/postfix'
+postfix_service: 'postfix'
+postfix_packages:
+  - 'ca-certificates'
+  - 'heirloom-mailx'
+  - 'libsasl2-2'
+  - 'libsasl2-modules'
+  - 'mailutils'
+  - 'postfix'
