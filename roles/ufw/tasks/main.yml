@@ -1,0 +1,40 @@
+---
+# file: ufw.yml
+- name: install ufw
+  sudo: yes
+  apt:
+    pkg: ufw
+    state: installed
+
+- name: allow apps
+  sudo: yes
+  ufw:
+    rule: allow
+    name: '{{ item }}'
+  with_items:
+    - OpenSSH
+    - mosh
+
+- name: allow OpenVPN
+  sudo: yes
+  ufw:
+    rule: allow
+    port: '{{openvpn_port}}'
+    proto: '{{openvpn_proto}}'
+  when: openvpn_enabled
+
+- name: allow other ports
+  sudo: yes
+  ufw:
+    rule: allow
+    port: '{{ item }}'
+    proto: tcp
+  with_items:
+    - 80
+    - 443
+
+- name: enabled ufw on startup with deny policy
+  sudo: yes
+  ufw:
+    state: enabled
+    policy: deny
