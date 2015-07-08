@@ -1,0 +1,32 @@
+---
+- name: check for FQDN variable presence
+  fail:
+    msg: "FQDN variable is not set!"
+  when: vps_fqdn|default(False) == False
+
+- name: check for hostname variable presence
+  fail:
+    msg: "FQDN variable is not set!"
+  when: vps_hostname|default(False) == False
+
+- name: Set Hostname with hostname command
+  sudo: yes
+  hostname: name="{{ vps_hostname }}"
+
+- name: Re-gather facts
+  action: setup
+  when: ansible_hostname != vps_fqdn
+
+# Idempotent way to build a /etc/hosts file with Ansible using your Ansible hosts inventory for a source.
+# Will include all hosts the playbook is run on.
+# Credits to rothgar: https://gist.github.com/rothgar/8793800
+- name: Build hosts file (backups will be made)
+  sudo: yes
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '{{ hostvars[item].ansible_hostname }}$'
+    line: '{{ hostvars[item].ansible_default_ipv4.address }} {{ item }} {{ hostvars[item].ansible_hostname }}'
+    state: present
+    backup: yes
+  when: hostvars[item].ansible_default_ipv4.address is defined
+  with_items: groups['all']
