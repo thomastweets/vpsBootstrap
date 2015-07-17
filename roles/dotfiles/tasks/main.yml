@@ -1,0 +1,13 @@
+---
+- name: clone dotfiles
+  git:
+    repo: https://github.com/thomastweets/dotfiles.git
+    dest: ~/dotfiles
+    accept_hostkey: True
+  sudo: yes
+  sudo_user: deploy
+
+- name: install dotfiles
+  shell: ~/dotfiles/installDotfiles.sh
+  sudo: yes
+  sudo_user: deploy
